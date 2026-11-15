@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Destined Ones — Story of Mr. Dinosaur and Mrs. Butterfly</title>
+  
+  <!-- PDF.js & PageFlip Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #090a0f;
+      --bg-card: #141722;
+      --accent: #e6b86a;
+      --text-main: #f4f4f6;
+      --text-muted: #9aa0b4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+      color: var(--text-main);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Top Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: rgba(9, 10, 15, 0.75);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 20;
+    }
+
+    .book-title {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      color: var(--accent);
+    }
+
+    .book-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 7px 13px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: rgba(230, 184, 106, 0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Main Flipbook Stage */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    #book-stage {
+      transition: transform 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .page {
+      background-color: #ffffff;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .page canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Bottom Controls */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 12px 20px;
+      background: rgba(9, 10, 15, 0.8);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 20;
+    }
+
+    #page-indicator {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      min-width: 90px;
+      text-align: center;
+    }
+
+    /* Chapter Index Sidebar */
+    #toc-drawer {
+      position: fixed;
+      top: 0;
+      left: -320px;
+      width: 300px;
+      height: 100%;
+      background: var(--bg-card);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 50;
+      transition: left 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+    }
+
+    #toc-drawer.open {
+      left: 0;
+    }
+
+    .toc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 12px;
+    }
+
+    .toc-header h2 {
+      font-size: 1rem;
+      color: var(--accent);
+    }
+
+    .toc-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .toc-list li {
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      transition: background 0.15s;
+    }
+
+    .toc-list li:hover {
+      background: rgba(230, 184, 106, 0.15);
+      color: var(--accent);
+    }
+
+    .toc-list span.pg {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    /* Loading Overlay */
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      z-index: 100;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(230, 184, 106, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <p id="loader-text" style="color: #e6b86a; font-size: 0.95rem;">Opening Destined Ones...</p>
+  </div>
+
+  <!-- Chapter Index Drawer -->
+  <aside id="toc-drawer">
+    <div class="toc-header">
+      <h2>In This Book</h2>
+      <button onclick="toggleToc()">✕</button>
+    </div>
+    <ul class="toc-list" id="toc-list"></ul>
+  </aside>
+
+  <!-- Header -->
+  <header>
+    <div>
+      <span class="book-title">Destined Ones</span>
+      <span class="book-subtitle">Story of Mr. Dinosaur & Mrs. Butterfly</span>
+    </div>
+    <div class="header-actions">
+      <button onclick="toggleToc()">☰ Chapters</button>
+      <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    </div>
+  </header>
+
+  <!-- Book Stage -->
+  <main>
+    <div id="book-stage">
+      <div id="flipbook"></div>
+    </div>
+  </main>
+
+  <!-- Footer Navigation -->
+  <footer>
+    <button onclick="pageFlip.flipPrev()">← Prev</button>
+    <span id="page-indicator">Page 1 of 41</span>
+    <button onclick="pageFlip.flipNext()">Next →</button>
+    <button onclick="changeZoom(-0.15)">−</button>
+    <button onclick="changeZoom(0.15)">+</button>
+  </footer>
+
+  <script>
+    // Exact filename of your uploaded PDF
+    const PDF_URL = "Destined ones.pdf";
+
+    // Exact Chapter Index mapped from your PDF pages
+    const CHAPTERS = [
+      { title: "Cover Page", page: 1 },
+      { title: "Title Page", page: 2 },
+      { title: "For Shagun", page: 3 },
+      { title: "Prologue", page: 4 },
+      { title: "Index", page: 5 },
+      { title: "1. The Meeting", page: 6 },
+      { title: "2. The Attachment", page: 9 },
+      { title: "3. The Confession", page: 13 },
+      { title: "4. The Love", page: 16 },
+      { title: "5. The Hardships", page: 20 },
+      { title: "6. The Intimacy", page: 23 },
+      { title: "7. The Efforts", page: 27 },
+      { title: "8. The Unexpected", page: 33 },
+      { title: "9. The Future", page: 41 }
+    ];
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+    let pageFlip = null;
+    let totalPages = 0;
+    let currentZoom = 1;
+
+    // Populate Chapter Index Drawer
+    const tocList = document.getElementById("toc-list");
+    CHAPTERS.forEach(ch => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${ch.title}</span><span class="pg">p. ${ch.page}</span>`;
+      li.onclick = () => {
+        if (pageFlip) pageFlip.flip(ch.page - 1);
+        toggleToc();
+      };
+      tocList.appendChild(li);
+    });
+
+    function toggleToc() {
+      document.getElementById("toc-drawer").classList.toggle("open");
+    }
+
+    function changeZoom(delta) {
+      currentZoom = Math.min(1.8, Math.max(0.7, currentZoom + delta));
+      document.getElementById("book-stage").style.transform = `scale(${currentZoom})`;
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    async function initBook() {
+      try {
+        const pdf = await pdfjsLib.getDocument(encodeURI(PDF_URL)).promise;
+        totalPages = pdf.numPages;
+
+        const firstPage = await pdf.getPage(1);
+        const baseViewport = firstPage.getViewport({ scale: 1 });
+        const aspectRatio = baseViewport.width / baseViewport.height;
+
+        // Calculate responsive book dimensions
+        const isMobile = window.innerWidth < 768;
+        const maxHeight = window.innerHeight - 140;
+        const maxWidth = isMobile ? window.innerWidth - 32 : (window.innerWidth - 64) / 2;
+
+        let pageHeight = maxHeight;
+        let pageWidth = pageHeight * aspectRatio;
+
+        if (pageWidth > maxWidth) {
+          pageWidth = maxWidth;
+          pageHeight = pageWidth / aspectRatio;
+        }
+
+        const flipbookEl = document.getElementById("flipbook");
+
+        // Render every PDF page to crisp high-DPI canvas
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          document.getElementById("loader-text").textContent =
+            `Loading page ${pageNum} of ${totalPages}...`;
+
+          const page = await pdf.getPage(pageNum);
+          const renderScale = 2; // High clarity for text & photos
+          const viewport = page.getViewport({ scale: renderScale });
+
+          const pageDiv = document.createElement("div");
+          pageDiv.className = "page";
+          if (pageNum === 1 || pageNum === totalPages) {
+            pageDiv.dataset.density = "hard";
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext("2d");
+
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          pageDiv.appendChild(canvas);
+          flipbookEl.appendChild(pageDiv);
+        }
+
+        // Initialize 3D PageFlip
+        pageFlip = new St.PageFlip(flipbookEl, {
+          width: Math.round(pageWidth),
+          height: Math.round(pageHeight),
+          size: "fixed",
+          minWidth: 250,
+          maxWidth: 1000,
+          minHeight: 350,
+          maxHeight: 1400,
+          showCover: true,
+          usePortrait: isMobile,
+          mobileScrollSupport: false,
+          maxShadowOpacity: 0.5
+        });
+
+        pageFlip.loadFromHTML(document.querySelectorAll(".page"));
+
+        pageFlip.on("flip", (e) => {
+          document.getElementById("page-indicator").textContent =
+            `Page ${e.data + 1} of ${totalPages}`;
+        });
+
+        // Keyboard arrow navigation
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowRight") pageFlip.flipNext();
+          if (e.key === "ArrowLeft") pageFlip.flipPrev();
+        });
+
+        document.getElementById("loader").style.display = "none";
+      } catch (err) {
+        document.getElementById("loader-text").textContent =
+          "Error loading PDF. Make sure 'Destined ones.pdf' is in the same folder as index.html.";
+        console.error(err);
+      }
+    }
+
+    initBook();
+  </script>
+</body>
+</html>
