@@ -11,11 +11,11 @@
 
   <style>
     :root {
-      --bg-dark: #090a0f;
-      --bg-card: #141722;
-      --accent: #e6b86a;
-      --text-main: #f4f4f6;
-      --text-muted: #9aa0b4;
+      --bg-card: rgba(22, 19, 36, 0.78);
+      --accent: #ffd1dc;
+      --spotify-green: #1ed760;
+      --text-main: #fff8fa;
+      --text-muted: #d8c8d4;
     }
 
     * {
@@ -26,13 +26,70 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+      background: linear-gradient(
+        180deg,
+        #1a2442 0%,
+        #3a386b 32%,
+        #7c5b8c 65%,
+        #c77d98 88%,
+        #f2a6a6 100%
+      );
       color: var(--text-main);
       height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       user-select: none;
+      position: relative;
+    }
+
+    /* Animated Sky Clouds Layer */
+    .sky-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .cloud {
+      position: absolute;
+      background: radial-gradient(circle at 50% 50%, rgba(255, 235, 242, 0.32), rgba(255, 215, 230, 0.08) 65%, transparent 75%);
+      border-radius: 50%;
+      filter: blur(18px);
+      animation: drift linear infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+
+    .cloud::before { width: 65%; height: 80%; top: -25%; left: 15%; }
+    .cloud::after { width: 55%; height: 70%; top: -15%; right: 12%; }
+
+    .c1 { width: 340px; height: 110px; top: 8%; left: -360px; animation-duration: 55s; }
+    .c2 { width: 460px; height: 140px; top: 22%; left: -480px; animation-duration: 75s; animation-delay: -20s; opacity: 0.8; }
+    .c3 { width: 290px; height: 95px; top: 44%; left: -310px; animation-duration: 62s; animation-delay: -38s; opacity: 0.65; }
+    .c4 { width: 520px; height: 150px; top: 64%; left: -540px; animation-duration: 85s; animation-delay: -12s; opacity: 0.7; }
+    .c5 { width: 380px; height: 120px; top: 15%; left: -400px; animation-duration: 68s; animation-delay: -48s; opacity: 0.75; }
+
+    @keyframes drift {
+      from { transform: translateX(0); }
+      to { transform: translateX(calc(100vw + 650px)); }
+    }
+
+    /* Falling Cherry Blossoms Canvas */
+    #sakura-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
     }
 
     /* Top Header */
@@ -40,10 +97,11 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 20px;
-      background: rgba(9, 10, 15, 0.75);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 20px;
+      background: rgba(20, 18, 36, 0.55);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 220, 230, 0.16);
       z-index: 20;
     }
 
@@ -52,6 +110,7 @@
       font-weight: 600;
       letter-spacing: 0.4px;
       color: var(--accent);
+      text-shadow: 0 1px 8px rgba(255, 182, 193, 0.35);
     }
 
     .book-subtitle {
@@ -66,9 +125,9 @@
     }
 
     button {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.12);
       color: var(--text-main);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 215, 228, 0.25);
       padding: 7px 13px;
       border-radius: 8px;
       font-size: 0.85rem;
@@ -77,19 +136,203 @@
     }
 
     button:hover {
-      background: rgba(230, 184, 106, 0.2);
+      background: rgba(255, 192, 203, 0.28);
       border-color: var(--accent);
-      color: var(--accent);
+      color: #ffffff;
     }
 
-    /* Main Flipbook Stage */
-    main {
+    /* Split Workspace: Spotify Player Left + Book Right */
+    .workspace {
       flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 24px;
+      overflow: hidden;
+      z-index: 10;
+    }
+
+    /* Left Spotify-Style Music Player */
+    .player-panel {
+      width: 320px;
+      max-height: 100%;
+      background: rgba(18, 18, 24, 0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      flex-shrink: 0;
+    }
+
+    .player-badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--spotify-green);
+      font-weight: 700;
+    }
+
+    .now-playing-info h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .now-playing-info p {
+      font-size: 0.8rem;
+      color: #b3b3b3;
+    }
+
+    /* Scrubber / Seek Bar */
+    .progress-area {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #seek-bar {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #seek-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #ffffff;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: #b3b3b3;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Playback Controls */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .ctrl-btn {
+      background: transparent;
+      border: none;
+      color: #e0e0e0;
+      font-size: 1.1rem;
+      padding: 6px 8px;
+      border-radius: 50%;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    .play-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--spotify-green);
+      color: #000000;
+      border: none;
+      font-size: 1.15rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(30, 215, 96, 0.4);
+    }
+
+    .play-btn:hover {
+      background: #22e567;
+      color: #000000;
+      transform: scale(1.05);
+    }
+
+    /* Playlist Queue */
+    .playlist-header {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #9e9e9e;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .song-list {
+      list-style: none;
+      overflow-y: auto;
+      max-height: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 4px;
+    }
+
+    .song-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .song-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    .song-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #d4d4d4;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .song-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .song-item.active {
+      background: rgba(30, 215, 96, 0.16);
+      color: var(--spotify-green);
+      font-weight: 600;
+    }
+
+    /* Right Flipbook Stage */
+    main.book-container {
+      flex: 1;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      padding: 16px;
       overflow: hidden;
     }
 
@@ -102,7 +345,7 @@
 
     .page {
       background-color: #ffffff;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 14px 36px rgba(18, 12, 28, 0.55);
       overflow: hidden;
     }
 
@@ -118,16 +361,17 @@
       align-items: center;
       justify-content: center;
       gap: 14px;
-      padding: 12px 20px;
-      background: rgba(9, 10, 15, 0.8);
-      backdrop-filter: blur(10px);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 20px;
+      background: rgba(20, 18, 36, 0.58);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255, 220, 230, 0.16);
       z-index: 20;
     }
 
     #page-indicator {
       font-size: 0.85rem;
-      color: var(--text-muted);
+      color: var(--text-main);
       min-width: 90px;
       text-align: center;
     }
@@ -140,32 +384,29 @@
       width: 300px;
       height: 100%;
       background: var(--bg-card);
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-right: 1px solid rgba(255, 215, 228, 0.18);
       z-index: 50;
       transition: left 0.3s ease;
       display: flex;
       flex-direction: column;
       padding: 20px;
-      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
     }
 
-    #toc-drawer.open {
-      left: 0;
-    }
+    #toc-drawer.open { left: 0; }
 
     .toc-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding-bottom: 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 215, 228, 0.15);
       margin-bottom: 12px;
     }
 
-    .toc-header h2 {
-      font-size: 1rem;
-      color: var(--accent);
-    }
+    .toc-header h2 { font-size: 1rem; color: var(--accent); }
 
     .toc-list {
       list-style: none;
@@ -185,20 +426,17 @@
     }
 
     .toc-list li:hover {
-      background: rgba(230, 184, 106, 0.15);
+      background: rgba(255, 192, 203, 0.2);
       color: var(--accent);
     }
 
-    .toc-list span.pg {
-      color: var(--text-muted);
-      font-size: 0.8rem;
-    }
+    .toc-list span.pg { color: var(--text-muted); font-size: 0.8rem; }
 
     /* Loading Overlay */
     #loader {
       position: fixed;
       inset: 0;
-      background: var(--bg-dark);
+      background: linear-gradient(180deg, #1a2442 0%, #5e497a 60%, #c77d98 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -210,23 +448,50 @@
     .spinner {
       width: 40px;
       height: 40px;
-      border: 3px solid rgba(230, 184, 106, 0.2);
+      border: 3px solid rgba(255, 209, 220, 0.25);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive adjustments for smaller screens */
+    @media (max-width: 820px) {
+      .workspace {
+        flex-direction: column;
+        padding: 10px 14px;
+        gap: 10px;
+      }
+      .player-panel {
+        width: 100%;
+        padding: 12px 14px;
+        gap: 8px;
+      }
+      .song-list {
+        max-height: 76px;
+      }
     }
   </style>
 </head>
 <body>
 
+  <!-- Moving Clouds Layer -->
+  <div class="sky-layer">
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="cloud c4"></div>
+    <div class="cloud c5"></div>
+  </div>
+
+  <!-- Falling Cherry Blossoms Layer -->
+  <canvas id="sakura-canvas"></canvas>
+
   <!-- Loading Screen -->
   <div id="loader">
     <div class="spinner"></div>
-    <p id="loader-text" style="color: #e6b86a; font-size: 0.95rem;">Opening Destined Ones...</p>
+    <p id="loader-text" style="color: #ffd1dc; font-size: 0.95rem;">Opening Destined Ones...</p>
   </div>
 
   <!-- Chapter Index Drawer -->
@@ -250,12 +515,49 @@
     </div>
   </header>
 
-  <!-- Book Stage -->
-  <main>
-    <div id="book-stage">
-      <div id="flipbook"></div>
-    </div>
-  </main>
+  <!-- Main Split Area: Left Spotify Player + Right Book -->
+  <div class="workspace">
+    
+    <!-- Left: Spotify-Style Procedural Lo-Fi Player -->
+    <aside class="player-panel">
+      <div class="player-badge">● Built-In Lo-Fi Synth • Loop All</div>
+      
+      <div class="now-playing-info">
+        <h3 id="track-title">Sakura Drift</h3>
+        <p id="track-subtitle">Track 1 of 10 • Lo-Fi Beats</p>
+      </div>
+
+      <div class="progress-area">
+        <input type="range" id="seek-bar" value="0" min="0" max="100" step="0.1" />
+        <div class="time-row">
+          <span id="current-time">0:00</span>
+          <span id="total-duration">2:00</span>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <button class="ctrl-btn" onclick="prevSong()" title="Previous Song">⏮</button>
+        <button class="ctrl-btn" onclick="skipSeconds(-10)" title="Rewind 10s">↺10</button>
+        <button class="play-btn" id="play-pause-btn" onclick="togglePlay()" title="Play / Pause">▶</button>
+        <button class="ctrl-btn" onclick="skipSeconds(10)" title="Forward 10s">10↻</button>
+        <button class="ctrl-btn" onclick="nextSong()" title="Next Song">⏭</button>
+      </div>
+
+      <div class="playlist-header">
+        <span>Lo-Fi Soundtrack</span>
+        <span>↻ Auto-Loop</span>
+      </div>
+      <ul class="song-list" id="song-list"></ul>
+    </aside>
+
+    <!-- Right: Flipbook -->
+    <main class="book-container" id="book-container">
+      <div id="book-stage">
+        <div id="flipbook"></div>
+      </div>
+    </main>
+
+  </div>
 
   <!-- Footer Navigation -->
   <footer>
@@ -267,10 +569,565 @@
   </footer>
 
   <script>
-    // Exact filename of your uploaded PDF
+    /* =================================================================
+       1. BUILT-IN 10-TRACK WEB AUDIO LO-FI SYNTHESIZER (NO MP3s NEEDED)
+       Generates warm Rhodes chords, sub-bass, vinyl crackle, soft drums,
+       and dreamy bell melodies directly in the browser.
+       ================================================================= */
+    const N = {
+      C3: 130.81, D3: 146.83, Eb3: 155.56, E3: 164.81, F3: 174.61, G3: 196.00, Ab3: 207.65, A3: 220.00, Bb3: 233.08, B3: 246.94,
+      C4: 261.63, D4: 293.66, Eb4: 311.13, E4: 329.63, F4: 349.23, G4: 392.00, Ab4: 415.30, A4: 440.00, Bb4: 466.16, B4: 493.88,
+      C5: 523.25, D5: 587.33, Eb5: 622.25, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00
+    };
+
+    const LOFI_TRACKS = [
+      {
+        name: "Sakura Drift",
+        bpm: 72,
+        duration: 120,
+        chords: [
+          [N.F3, N.A3, N.C4, N.E4],
+          [N.E3, N.G3, N.B3, N.D4],
+          [N.D3, N.F3, N.A3, N.C4],
+          [N.C3, N.E3, N.G3, N.B3]
+        ],
+        melody: [N.A4, N.C5, N.E5, N.G4, N.B4, N.D5, N.F4, N.A4, N.C5, N.E4, N.G4, N.B4]
+      },
+      {
+        name: "Velvet Twilight",
+        bpm: 68,
+        duration: 115,
+        chords: [
+          [N.D3, N.F3, N.A3, N.C4],
+          [N.G3, N.B3, N.D4, N.F4],
+          [N.C3, N.E3, N.G3, N.B3],
+          [N.A3, N.C4, N.E4, N.G4]
+        ],
+        melody: [N.F4, N.A4, N.D5, N.B4, N.G4, N.E5, N.C5, N.G4, N.E4, N.A4]
+      },
+      {
+        name: "Paper Lanterns",
+        bpm: 76,
+        duration: 130,
+        chords: [
+          [N.C3, N.E3, N.G3, N.B3],
+          [N.A3, N.C4, N.E4, N.G4],
+          [N.F3, N.A3, N.C4, N.E4],
+          [N.G3, N.B3, N.D4, N.F4]
+        ],
+        melody: [N.E4, N.G4, N.C5, N.E5, N.C5, N.A4, N.F4, N.A4, N.D5, N.B4]
+      },
+      {
+        name: "Starlight Confession",
+        bpm: 64,
+        duration: 125,
+        chords: [
+          [N.Eb3, N.G3, N.Bb3, N.D4],
+          [N.C3, N.Eb3, N.G3, N.Bb3],
+          [N.F3, N.Ab3, N.C4, N.Eb4],
+          [N.Bb3, N.D4, N.F4, N.A4]
+        ],
+        melody: [N.Bb4, N.G4, N.Eb5, N.C5, N.Ab4, N.F4, N.D5, N.Bb4]
+      },
+      {
+        name: "Dinosaur & Butterfly",
+        bpm: 74,
+        duration: 140,
+        chords: [
+          [N.F3, N.A3, N.C4, N.E4],
+          [N.G3, N.B3, N.D4, N.E4],
+          [N.A3, N.C4, N.E4, N.G4],
+          [N.E3, N.G3, N.B3, N.D4]
+        ],
+        melody: [N.C5, N.A4, N.E5, N.D5, N.B4, N.G4, N.A4, N.C5, N.E5, N.G5]
+      },
+      {
+        name: "Rain on the Window",
+        bpm: 66,
+        duration: 118,
+        chords: [
+          [N.A3, N.C4, N.E4, N.G4],
+          [N.D3, N.F3, N.A3, N.C4],
+          [N.G3, N.B3, N.D4, N.F4],
+          [N.C3, N.E3, N.G3, N.B3]
+        ],
+        melody: [N.E5, N.C5, N.A4, N.F4, N.D5, N.B4, N.G4, N.E4, N.C5]
+      },
+      {
+        name: "Warm Cocoa",
+        bpm: 78,
+        duration: 110,
+        chords: [
+          [N.Bb3, N.D4, N.F4, N.A4],
+          [N.G3, N.Bb3, N.D4, N.F4],
+          [N.D3, N.F3, N.A3, N.C4],
+          [N.C3, N.E3, N.G3, N.Bb3]
+        ],
+        melody: [N.D5, N.F5, N.Bb4, N.G4, N.A4, N.F4, N.E4, N.G4, N.C5]
+      },
+      {
+        name: "Midnight Pages",
+        bpm: 70,
+        duration: 128,
+        chords: [
+          [N.E3, N.G3, N.B3, N.D4],
+          [N.A3, N.C4, N.E4, N.G4],
+          [N.D3, N.F3, N.A3, N.C4],
+          [N.G3, N.B3, N.D4, N.F4]
+        ],
+        melody: [N.B4, N.E5, N.D5, N.C5, N.A4, N.F4, N.A4, N.B4, N.D5]
+      },
+      {
+        name: "Pastel Clouds",
+        bpm: 75,
+        duration: 122,
+        chords: [
+          [N.F3, N.Ab3, N.C4, N.Eb4],
+          [N.Eb3, N.G3, N.Bb3, N.D4],
+          [N.C3, N.Eb3, N.G3, N.Bb3],
+          [N.D3, N.F3, N.A3, N.C4]
+        ],
+        melody: [N.C5, N.Eb5, N.D5, N.Bb4, N.G4, N.C5, N.A4, N.F4]
+      },
+      {
+        name: "Destined Forever",
+        bpm: 69,
+        duration: 135,
+        chords: [
+          [N.C3, N.E3, N.G3, N.B3],
+          [N.E3, N.G3, N.B3, N.D4],
+          [N.F3, N.A3, N.C4, N.E4],
+          [N.G3, N.B3, N.D4, N.F4]
+        ],
+        melody: [N.G4, N.C5, N.E5, N.G5, N.E5, N.C5, N.A4, N.F4, N.D5, N.B4, N.C5]
+      }
+    ];
+
+    const playPauseBtn = document.getElementById("play-pause-btn");
+    const seekBar = document.getElementById("seek-bar");
+    const currentTimeEl = document.getElementById("current-time");
+    const totalDurationEl = document.getElementById("total-duration");
+    const trackTitleEl = document.getElementById("track-title");
+    const trackSubtitleEl = document.getElementById("track-subtitle");
+    const songListEl = document.getElementById("song-list");
+
+    let audioCtx = null;
+    let masterGain = null;
+    let crackleNode = null;
+    let isPlaying = false;
+    let currentSongIndex = 0;
+    let elapsedTime = 0;
+    let stepIndex = 0;
+    let stepTimer = null;
+    let progressTimer = null;
+
+    function formatTime(secs) {
+      if (isNaN(secs)) return "0:00";
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${m}:${s < 10 ? "0" : ""}${s}`;
+    }
+
+    function initAudioEngine() {
+      if (audioCtx) return;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContextClass();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.75;
+
+      // Warm Lo-Fi Lowpass Master Filter
+      const warmFilter = audioCtx.createBiquadFilter();
+      warmFilter.type = "lowpass";
+      warmFilter.frequency.value = 2400;
+
+      masterGain.connect(warmFilter);
+      warmFilter.connect(audioCtx.destination);
+
+      startVinylCrackle();
+    }
+
+    function startVinylCrackle() {
+      const bufferSize = audioCtx.sampleRate * 4;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() < 0.004 ? (Math.random() * 2 - 1) * 0.35 : (Math.random() * 2 - 1) * 0.015;
+      }
+
+      crackleNode = audioCtx.createBufferSource();
+      crackleNode.buffer = buffer;
+      crackleNode.loop = true;
+
+      const bandpass = audioCtx.createBiquadFilter();
+      bandpass.type = "bandpass";
+      bandpass.frequency.value = 1700;
+
+      const crackleGain = audioCtx.createGain();
+      crackleGain.gain.value = 0.06;
+
+      crackleNode.connect(bandpass);
+      bandpass.connect(crackleGain);
+      crackleGain.connect(masterGain);
+      crackleNode.start();
+    }
+
+    function playRhodesChord(freqs, durationSec) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      freqs.forEach((freq) => {
+        const osc = audioCtx.createOscillator();
+        const subOsc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = "triangle";
+        subOsc.type = "sine";
+
+        // Subtle tape warble / detune
+        osc.frequency.setValueAtTime(freq, now);
+        osc.detune.setValueAtTime((Math.random() - 0.5) * 10, now);
+        subOsc.frequency.setValueAtTime(freq * 2, now);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.055, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + durationSec);
+
+        const subGain = audioCtx.createGain();
+        subGain.gain.value = 0.22;
+
+        osc.connect(gain);
+        subOsc.connect(subGain);
+        subGain.connect(gain);
+        gain.connect(masterGain);
+
+        osc.start(now);
+        subOsc.start(now);
+        osc.stop(now + durationSec);
+        subOsc.stop(now + durationSec);
+      });
+    }
+
+    function playSubBass(freq, durationSec) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq * 0.5, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.14, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + durationSec);
+    }
+
+    function playBellNote(freq, durationSec) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.065, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0005, now + durationSec);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + durationSec);
+    }
+
+    function playKick() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(115, now);
+      osc.frequency.exponentialRampToValueAtTime(38, now + 0.12);
+
+      gain.gain.setValueAtTime(0.26, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    function playSnare() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const bufferSize = audioCtx.sampleRate * 0.15;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = 1100;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      noise.start(now);
+    }
+
+    function playHiHat() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const bufferSize = audioCtx.sampleRate * 0.05;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "highpass";
+      filter.frequency.value = 5000;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.035, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      noise.start(now);
+    }
+
+    function triggerSequencerStep() {
+      if (!isPlaying) return;
+      const track = LOFI_TRACKS[currentSongIndex];
+      const stepDurationSec = (60 / track.bpm) / 2; // 8th-note grid
+      const barStep = stepIndex % 8;
+      const chordIndex = Math.floor(stepIndex / 8) % track.chords.length;
+      const currentChord = track.chords[chordIndex];
+
+      // Chords & Sub-Bass on beat 1 of each bar
+      if (barStep === 0) {
+        playRhodesChord(currentChord, stepDurationSec * 7.8);
+        playSubBass(currentChord[0], stepDurationSec * 4.5);
+      }
+      if (barStep === 5) {
+        playSubBass(currentChord[0], stepDurationSec * 2.5);
+      }
+
+      // Lo-Fi Drum Pattern
+      if (barStep === 0 || barStep === 5) playKick();
+      if (barStep === 2 || barStep === 6) playSnare();
+      if (barStep % 2 === 0 || barStep === 7) playHiHat();
+
+      // Gentle Melodic Plucks
+      if (barStep === 1 || barStep === 3 || barStep === 4 || barStep === 6) {
+        if (Math.random() < 0.72) {
+          const melIdx = (stepIndex + chordIndex) % track.melody.length;
+          playBellNote(track.melody[melIdx], stepDurationSec * 2.6);
+        }
+      }
+
+      stepIndex++;
+    }
+
+    function startSequencer() {
+      stopSequencer();
+      const track = LOFI_TRACKS[currentSongIndex];
+      const stepMs = ((60 / track.bpm) / 2) * 1000;
+
+      triggerSequencerStep();
+      stepTimer = setInterval(triggerSequencerStep, stepMs);
+
+      progressTimer = setInterval(() => {
+        if (!isPlaying) return;
+        elapsedTime += 0.25;
+        if (elapsedTime >= track.duration) {
+          nextSong();
+          return;
+        }
+        seekBar.value = (elapsedTime / track.duration) * 100;
+        currentTimeEl.textContent = formatTime(elapsedTime);
+      }, 250);
+    }
+
+    function stopSequencer() {
+      if (stepTimer) clearInterval(stepTimer);
+      if (progressTimer) clearInterval(progressTimer);
+      stepTimer = null;
+      progressTimer = null;
+    }
+
+    function renderPlaylist() {
+      songListEl.innerHTML = "";
+      LOFI_TRACKS.forEach((song, idx) => {
+        const li = document.createElement("li");
+        li.className = "song-item" + (idx === currentSongIndex ? " active" : "");
+        li.innerHTML = `<span>${idx + 1}. ${song.name}</span><span>${idx === currentSongIndex ? "♫" : formatTime(song.duration)}</span>`;
+        li.onclick = () => {
+          loadSong(idx, true);
+        };
+        songListEl.appendChild(li);
+      });
+    }
+
+    function loadSong(index, autoPlay = false) {
+      currentSongIndex = (index + LOFI_TRACKS.length) % LOFI_TRACKS.length;
+      const track = LOFI_TRACKS[currentSongIndex];
+      elapsedTime = 0;
+      stepIndex = 0;
+
+      trackTitleEl.textContent = track.name;
+      trackSubtitleEl.textContent = `Track ${currentSongIndex + 1} of ${LOFI_TRACKS.length} • ${track.bpm} BPM Lo-Fi`;
+      seekBar.value = 0;
+      currentTimeEl.textContent = "0:00";
+      totalDurationEl.textContent = formatTime(track.duration);
+      renderPlaylist();
+
+      if (autoPlay) {
+        initAudioEngine();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        isPlaying = true;
+        playPauseBtn.textContent = "❚❚";
+        startSequencer();
+      } else if (isPlaying) {
+        startSequencer();
+      }
+    }
+
+    function togglePlay() {
+      initAudioEngine();
+      if (!isPlaying) {
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        isPlaying = true;
+        playPauseBtn.textContent = "❚❚";
+        startSequencer();
+      } else {
+        isPlaying = false;
+        playPauseBtn.textContent = "▶";
+        stopSequencer();
+        if (audioCtx.state === "running") audioCtx.suspend();
+      }
+    }
+
+    function nextSong() {
+      loadSong(currentSongIndex + 1, true);
+    }
+
+    function prevSong() {
+      if (elapsedTime > 3) {
+        elapsedTime = 0;
+        stepIndex = 0;
+        seekBar.value = 0;
+        currentTimeEl.textContent = "0:00";
+      } else {
+        loadSong(currentSongIndex - 1, true);
+      }
+    }
+
+    function skipSeconds(delta) {
+      const track = LOFI_TRACKS[currentSongIndex];
+      elapsedTime = Math.min(track.duration - 1, Math.max(0, elapsedTime + delta));
+      seekBar.value = (elapsedTime / track.duration) * 100;
+      currentTimeEl.textContent = formatTime(elapsedTime);
+    }
+
+    seekBar.addEventListener("input", () => {
+      const track = LOFI_TRACKS[currentSongIndex];
+      elapsedTime = (seekBar.value / 100) * track.duration;
+      currentTimeEl.textContent = formatTime(elapsedTime);
+    });
+
+    // Initialize first track UI
+    loadSong(0, false);
+
+    /* ==========================================
+       2. FALLING CHERRY BLOSSOMS ANIMATION
+       ========================================== */
+    const sakuraCanvas = document.getElementById("sakura-canvas");
+    const sCtx = sakuraCanvas.getContext("2d");
+    let petals = [];
+
+    function resizeSakura() {
+      sakuraCanvas.width = window.innerWidth;
+      sakuraCanvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeSakura);
+    resizeSakura();
+
+    class Petal {
+      constructor(randomY = false) { this.reset(randomY); }
+      reset(randomY = false) {
+        this.x = Math.random() * sakuraCanvas.width;
+        this.y = randomY ? Math.random() * sakuraCanvas.height : -20;
+        this.size = 6 + Math.random() * 8;
+        this.speedY = 0.7 + Math.random() * 1.3;
+        this.speedX = -0.5 + Math.random() * 1.2;
+        this.angle = Math.random() * Math.PI * 2;
+        this.spin = (Math.random() - 0.5) * 0.035;
+        this.swayOffset = Math.random() * Math.PI * 2;
+        this.opacity = 0.55 + Math.random() * 0.4;
+        const colors = ["#ffd1dc", "#ffb7c5", "#ffc8d6", "#ffe4ec"];
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+      }
+      update() {
+        this.y += this.speedY;
+        this.x += this.speedX + Math.sin(this.y * 0.015 + this.swayOffset) * 0.65;
+        this.angle += this.spin;
+        if (this.y > sakuraCanvas.height + 20 || this.x > sakuraCanvas.width + 30 || this.x < -30) {
+          this.reset(false);
+        }
+      }
+      draw() {
+        sCtx.save();
+        sCtx.translate(this.x, this.y);
+        sCtx.rotate(this.angle);
+        sCtx.globalAlpha = this.opacity;
+        sCtx.fillStyle = this.color;
+        sCtx.beginPath();
+        sCtx.moveTo(0, 0);
+        sCtx.bezierCurveTo(this.size * 0.6, -this.size * 0.5, this.size * 1.2, this.size * 0.3, 0, this.size);
+        sCtx.bezierCurveTo(-this.size * 1.2, this.size * 0.3, -this.size * 0.6, -this.size * 0.5, 0, 0);
+        sCtx.fill();
+        sCtx.restore();
+      }
+    }
+
+    const petalCount = window.innerWidth < 768 ? 32 : 55;
+    for (let i = 0; i < petalCount; i++) petals.push(new Petal(true));
+
+    function animateSakura() {
+      sCtx.clearRect(0, 0, sakuraCanvas.width, sakuraCanvas.height);
+      for (const p of petals) { p.update(); p.draw(); }
+      requestAnimationFrame(animateSakura);
+    }
+    animateSakura();
+
+    /* ==========================================
+       3. PDF FLIPBOOK ENGINE (RIGHT SIDE)
+       ========================================== */
     const PDF_URL = "Destined ones.pdf";
 
-    // Exact Chapter Index mapped from your PDF pages
     const CHAPTERS = [
       { title: "Cover Page", page: 1 },
       { title: "Title Page", page: 2 },
@@ -295,7 +1152,6 @@
     let totalPages = 0;
     let currentZoom = 1;
 
-    // Populate Chapter Index Drawer
     const tocList = document.getElementById("toc-list");
     CHAPTERS.forEach(ch => {
       const li = document.createElement("li");
@@ -333,28 +1189,27 @@
         const baseViewport = firstPage.getViewport({ scale: 1 });
         const aspectRatio = baseViewport.width / baseViewport.height;
 
-        // Calculate responsive book dimensions
-        const isMobile = window.innerWidth < 768;
-        const maxHeight = window.innerHeight - 140;
-        const maxWidth = isMobile ? window.innerWidth - 32 : (window.innerWidth - 64) / 2;
+        const bookBox = document.getElementById("book-container");
+        const isMobile = window.innerWidth <= 820;
+        const availHeight = bookBox.clientHeight - 16;
+        const availWidth = isMobile ? bookBox.clientWidth - 16 : (bookBox.clientWidth - 24) / 2;
 
-        let pageHeight = maxHeight;
+        let pageHeight = availHeight;
         let pageWidth = pageHeight * aspectRatio;
 
-        if (pageWidth > maxWidth) {
-          pageWidth = maxWidth;
+        if (pageWidth > availWidth) {
+          pageWidth = availWidth;
           pageHeight = pageWidth / aspectRatio;
         }
 
         const flipbookEl = document.getElementById("flipbook");
 
-        // Render every PDF page to crisp high-DPI canvas
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
           document.getElementById("loader-text").textContent =
             `Loading page ${pageNum} of ${totalPages}...`;
 
           const page = await pdf.getPage(pageNum);
-          const renderScale = 2; // High clarity for text & photos
+          const renderScale = 2;
           const viewport = page.getViewport({ scale: renderScale });
 
           const pageDiv = document.createElement("div");
@@ -373,14 +1228,13 @@
           flipbookEl.appendChild(pageDiv);
         }
 
-        // Initialize 3D PageFlip
         pageFlip = new St.PageFlip(flipbookEl, {
-          width: Math.round(pageWidth),
-          height: Math.round(pageHeight),
+          width: Math.max(200, Math.round(pageWidth)),
+          height: Math.max(280, Math.round(pageHeight)),
           size: "fixed",
-          minWidth: 250,
+          minWidth: 200,
           maxWidth: 1000,
-          minHeight: 350,
+          minHeight: 280,
           maxHeight: 1400,
           showCover: true,
           usePortrait: isMobile,
@@ -395,7 +1249,6 @@
             `Page ${e.data + 1} of ${totalPages}`;
         });
 
-        // Keyboard arrow navigation
         document.addEventListener("keydown", (e) => {
           if (e.key === "ArrowRight") pageFlip.flipNext();
           if (e.key === "ArrowLeft") pageFlip.flipPrev();
