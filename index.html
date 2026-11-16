@@ -536,11 +536,11 @@
       </div>
 
       <div class="controls-row">
-        <button class="ctrl-btn" onclick="prevSong()" title="Previous Song">⏮</button>
-        <button class="ctrl-btn" onclick="skipSeconds(-10)" title="Rewind 10s">↺10</button>
-        <button class="play-btn" id="play-pause-btn" onclick="togglePlay()" title="Play / Pause">▶</button>
-        <button class="ctrl-btn" onclick="skipSeconds(10)" title="Forward 10s">10↻</button>
-        <button class="ctrl-btn" onclick="nextSong()" title="Next Song">⏭</button>
+        <button class="ctrl-btn" id="btn-prev" title="Previous Song">⏮</button>
+        <button class="ctrl-btn" id="btn-rew" title="Rewind 10s">↺10</button>
+        <button class="play-btn" id="play-pause-btn" title="Play / Pause">▶</button>
+        <button class="ctrl-btn" id="btn-fwd" title="Forward 10s">10↻</button>
+        <button class="ctrl-btn" id="btn-next" title="Next Song">⏭</button>
       </div>
 
       <div class="playlist-header">
@@ -570,9 +570,7 @@
 
   <script>
     /* =================================================================
-       1. BUILT-IN 10-TRACK WEB AUDIO LO-FI SYNTHESIZER (NO MP3s NEEDED)
-       Generates warm Rhodes chords, sub-bass, vinyl crackle, soft drums,
-       and dreamy bell melodies directly in the browser.
+       1. BUILT-IN 10-TRACK WEB AUDIO LO-FI SYNTHESIZER (SAFARI/MOBILE FIXED)
        ================================================================= */
     const N = {
       C3: 130.81, D3: 146.83, Eb3: 155.56, E3: 164.81, F3: 174.61, G3: 196.00, Ab3: 207.65, A3: 220.00, Bb3: 233.08, B3: 246.94,
@@ -728,23 +726,33 @@
       return `${m}:${s < 10 ? "0" : ""}${s}`;
     }
 
-    function initAudioEngine() {
-      if (audioCtx) return;
+    function unlockAndInitAudio() {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AudioContextClass();
+      if (!audioCtx) {
+        audioCtx = new AudioContextClass();
 
-      masterGain = audioCtx.createGain();
-      masterGain.gain.value = 0.75;
+        masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(1.1, audioCtx.currentTime);
 
-      // Warm Lo-Fi Lowpass Master Filter
-      const warmFilter = audioCtx.createBiquadFilter();
-      warmFilter.type = "lowpass";
-      warmFilter.frequency.value = 2400;
+        const warmFilter = audioCtx.createBiquadFilter();
+        warmFilter.type = "lowpass";
+        warmFilter.frequency.setValueAtTime(3600, audioCtx.currentTime);
 
-      masterGain.connect(warmFilter);
-      warmFilter.connect(audioCtx.destination);
+        masterGain.connect(warmFilter);
+        warmFilter.connect(audioCtx.destination);
 
-      startVinylCrackle();
+        startVinylCrackle();
+      }
+
+      // Mandatory synchronous resume + silent buffer unlock for iPad / Safari / iOS
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      const unlockBuf = audioCtx.createBuffer(1, 1, 22050);
+      const unlockSrc = audioCtx.createBufferSource();
+      unlockSrc.buffer = unlockBuf;
+      unlockSrc.connect(audioCtx.destination);
+      unlockSrc.start(0);
     }
 
     function startVinylCrackle() {
@@ -761,19 +769,19 @@
 
       const bandpass = audioCtx.createBiquadFilter();
       bandpass.type = "bandpass";
-      bandpass.frequency.value = 1700;
+      bandpass.frequency.setValueAtTime(1700, audioCtx.currentTime);
 
       const crackleGain = audioCtx.createGain();
-      crackleGain.gain.value = 0.06;
+      crackleGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
 
       crackleNode.connect(bandpass);
       bandpass.connect(crackleGain);
       crackleGain.connect(masterGain);
-      crackleNode.start();
+      crackleNode.start(0);
     }
 
     function playRhodesChord(freqs, durationSec) {
-      if (!audioCtx) return;
+      if (!audioCtx || audioCtx.state !== "running") return;
       const now = audioCtx.currentTime;
       freqs.forEach((freq) => {
         const osc = audioCtx.createOscillator();
@@ -783,17 +791,16 @@
         osc.type = "triangle";
         subOsc.type = "sine";
 
-        // Subtle tape warble / detune
         osc.frequency.setValueAtTime(freq, now);
         osc.detune.setValueAtTime((Math.random() - 0.5) * 10, now);
         subOsc.frequency.setValueAtTime(freq * 2, now);
 
         gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.055, now + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.0008, now + durationSec);
+        gain.gain.linearRampToValueAtTime(0.11, now + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
 
         const subGain = audioCtx.createGain();
-        subGain.gain.value = 0.22;
+        subGain.gain.setValueAtTime(0.28, now);
 
         osc.connect(gain);
         subOsc.connect(subGain);
@@ -802,32 +809,32 @@
 
         osc.start(now);
         subOsc.start(now);
-        osc.stop(now + durationSec);
-        subOsc.stop(now + durationSec);
+        osc.stop(now + durationSec + 0.05);
+        subOsc.stop(now + durationSec + 0.05);
       });
     }
 
     function playSubBass(freq, durationSec) {
-      if (!audioCtx) return;
+      if (!audioCtx || audioCtx.state !== "running") return;
       const now = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
 
-      osc.type = "sine";
+      osc.type = "triangle";
       osc.frequency.setValueAtTime(freq * 0.5, now);
 
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.14, now + 0.05);
+      gain.gain.linearRampToValueAtTime(0.22, now + 0.04);
       gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
 
       osc.connect(gain);
       gain.connect(masterGain);
       osc.start(now);
-      osc.stop(now + durationSec);
+      osc.stop(now + durationSec + 0.05);
     }
 
     function playBellNote(freq, durationSec) {
-      if (!audioCtx) return;
+      if (!audioCtx || audioCtx.state !== "running") return;
       const now = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -836,38 +843,38 @@
       osc.frequency.setValueAtTime(freq, now);
 
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.065, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0005, now + durationSec);
+      gain.gain.linearRampToValueAtTime(0.13, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
 
       osc.connect(gain);
       gain.connect(masterGain);
       osc.start(now);
-      osc.stop(now + durationSec);
+      osc.stop(now + durationSec + 0.05);
     }
 
     function playKick() {
-      if (!audioCtx) return;
+      if (!audioCtx || audioCtx.state !== "running") return;
       const now = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
 
       osc.type = "sine";
-      osc.frequency.setValueAtTime(115, now);
-      osc.frequency.exponentialRampToValueAtTime(38, now + 0.12);
+      osc.frequency.setValueAtTime(130, now);
+      osc.frequency.exponentialRampToValueAtTime(42, now + 0.14);
 
-      gain.gain.setValueAtTime(0.26, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      gain.gain.setValueAtTime(0.38, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
 
       osc.connect(gain);
       gain.connect(masterGain);
       osc.start(now);
-      osc.stop(now + 0.25);
+      osc.stop(now + 0.26);
     }
 
     function playSnare() {
-      if (!audioCtx) return;
+      if (!audioCtx || audioCtx.state !== "running") return;
       const now = audioCtx.currentTime;
-      const bufferSize = audioCtx.sampleRate * 0.15;
+      const bufferSize = Math.floor(audioCtx.sampleRate * 0.15);
       const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -879,10 +886,10 @@
 
       const filter = audioCtx.createBiquadFilter();
       filter.type = "bandpass";
-      filter.frequency.value = 1100;
+      filter.frequency.setValueAtTime(1200, now);
 
       const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.setValueAtTime(0.16, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
 
       noise.connect(filter);
@@ -892,9 +899,9 @@
     }
 
     function playHiHat() {
-      if (!audioCtx) return;
+      if (!audioCtx || audioCtx.state !== "running") return;
       const now = audioCtx.currentTime;
-      const bufferSize = audioCtx.sampleRate * 0.05;
+      const bufferSize = Math.floor(audioCtx.sampleRate * 0.05);
       const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -906,10 +913,10 @@
 
       const filter = audioCtx.createBiquadFilter();
       filter.type = "highpass";
-      filter.frequency.value = 5000;
+      filter.frequency.setValueAtTime(4800, now);
 
       const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.035, now);
+      gain.gain.setValueAtTime(0.06, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
 
       noise.connect(filter);
@@ -920,13 +927,15 @@
 
     function triggerSequencerStep() {
       if (!isPlaying) return;
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
       const track = LOFI_TRACKS[currentSongIndex];
-      const stepDurationSec = (60 / track.bpm) / 2; // 8th-note grid
+      const stepDurationSec = (60 / track.bpm) / 2;
       const barStep = stepIndex % 8;
       const chordIndex = Math.floor(stepIndex / 8) % track.chords.length;
       const currentChord = track.chords[chordIndex];
 
-      // Chords & Sub-Bass on beat 1 of each bar
       if (barStep === 0) {
         playRhodesChord(currentChord, stepDurationSec * 7.8);
         playSubBass(currentChord[0], stepDurationSec * 4.5);
@@ -935,14 +944,12 @@
         playSubBass(currentChord[0], stepDurationSec * 2.5);
       }
 
-      // Lo-Fi Drum Pattern
       if (barStep === 0 || barStep === 5) playKick();
       if (barStep === 2 || barStep === 6) playSnare();
       if (barStep % 2 === 0 || barStep === 7) playHiHat();
 
-      // Gentle Melodic Plucks
       if (barStep === 1 || barStep === 3 || barStep === 4 || barStep === 6) {
-        if (Math.random() < 0.72) {
+        if (Math.random() < 0.78) {
           const melIdx = (stepIndex + chordIndex) % track.melody.length;
           playBellNote(track.melody[melIdx], stepDurationSec * 2.6);
         }
@@ -956,7 +963,11 @@
       const track = LOFI_TRACKS[currentSongIndex];
       const stepMs = ((60 / track.bpm) / 2) * 1000;
 
-      triggerSequencerStep();
+      // Slight 30ms delay on first beat so AudioContext state transitions to "running" cleanly
+      setTimeout(() => {
+        if (isPlaying) triggerSequencerStep();
+      }, 30);
+
       stepTimer = setInterval(triggerSequencerStep, stepMs);
 
       progressTimer = setInterval(() => {
@@ -984,9 +995,10 @@
         const li = document.createElement("li");
         li.className = "song-item" + (idx === currentSongIndex ? " active" : "");
         li.innerHTML = `<span>${idx + 1}. ${song.name}</span><span>${idx === currentSongIndex ? "♫" : formatTime(song.duration)}</span>`;
-        li.onclick = () => {
+        li.addEventListener("click", () => {
+          unlockAndInitAudio();
           loadSong(idx, true);
-        };
+        });
         songListEl.appendChild(li);
       });
     }
@@ -1005,8 +1017,7 @@
       renderPlaylist();
 
       if (autoPlay) {
-        initAudioEngine();
-        if (audioCtx.state === "suspended") audioCtx.resume();
+        unlockAndInitAudio();
         isPlaying = true;
         playPauseBtn.textContent = "❚❚";
         startSequencer();
@@ -1016,9 +1027,8 @@
     }
 
     function togglePlay() {
-      initAudioEngine();
+      unlockAndInitAudio();
       if (!isPlaying) {
-        if (audioCtx.state === "suspended") audioCtx.resume();
         isPlaying = true;
         playPauseBtn.textContent = "❚❚";
         startSequencer();
@@ -1026,15 +1036,19 @@
         isPlaying = false;
         playPauseBtn.textContent = "▶";
         stopSequencer();
-        if (audioCtx.state === "running") audioCtx.suspend();
+        if (audioCtx && audioCtx.state === "running") {
+          audioCtx.suspend();
+        }
       }
     }
 
     function nextSong() {
+      unlockAndInitAudio();
       loadSong(currentSongIndex + 1, true);
     }
 
     function prevSong() {
+      unlockAndInitAudio();
       if (elapsedTime > 3) {
         elapsedTime = 0;
         stepIndex = 0;
@@ -1051,6 +1065,12 @@
       seekBar.value = (elapsedTime / track.duration) * 100;
       currentTimeEl.textContent = formatTime(elapsedTime);
     }
+
+    playPauseBtn.addEventListener("click", togglePlay);
+    document.getElementById("btn-next").addEventListener("click", nextSong);
+    document.getElementById("btn-prev").addEventListener("click", prevSong);
+    document.getElementById("btn-rew").addEventListener("click", () => skipSeconds(-10));
+    document.getElementById("btn-fwd").addEventListener("click", () => skipSeconds(10));
 
     seekBar.addEventListener("input", () => {
       const track = LOFI_TRACKS[currentSongIndex];
