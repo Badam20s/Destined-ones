@@ -344,7 +344,7 @@
     }
 
     .page {
-      background-color: #ffffff;
+      background-color: #0b0b12;
       box-shadow: 0 14px 36px rgba(18, 12, 28, 0.55);
       overflow: hidden;
     }
@@ -372,7 +372,7 @@
     #page-indicator {
       font-size: 0.85rem;
       color: var(--text-main);
-      min-width: 90px;
+      min-width: 110px;
       text-align: center;
     }
 
@@ -562,7 +562,7 @@
   <!-- Footer Navigation -->
   <footer>
     <button onclick="pageFlip.flipPrev()">← Prev</button>
-    <span id="page-indicator">Page 1 of 41</span>
+    <span id="page-indicator">Front Cover (1 of 65)</span>
     <button onclick="pageFlip.flipNext()">Next →</button>
     <button onclick="changeZoom(-0.15)">−</button>
     <button onclick="changeZoom(0.15)">+</button>
@@ -744,7 +744,6 @@
         startVinylCrackle();
       }
 
-      // Mandatory synchronous resume + silent buffer unlock for iPad / Safari / iOS
       if (audioCtx.state === "suspended") {
         audioCtx.resume();
       }
@@ -963,7 +962,6 @@
       const track = LOFI_TRACKS[currentSongIndex];
       const stepMs = ((60 / track.bpm) / 2) * 1000;
 
-      // Slight 30ms delay on first beat so AudioContext state transitions to "running" cleanly
       setTimeout(() => {
         if (isPlaying) triggerSequencerStep();
       }, 30);
@@ -1078,7 +1076,6 @@
       currentTimeEl.textContent = formatTime(elapsedTime);
     });
 
-    // Initialize first track UI
     loadSong(0, false);
 
     /* ==========================================
@@ -1143,13 +1140,13 @@
     }
     animateSakura();
 
-    /* ==========================================
-       3. PDF FLIPBOOK ENGINE (RIGHT SIDE)
-       ========================================== */
+    /* ==============================================================
+       3. PDF FLIPBOOK ENGINE WITH TRUE HARD BACK COVER ("THE END")
+       ============================================================== */
     const PDF_URL = "Destined ones.pdf";
 
     const CHAPTERS = [
-      { title: "Cover Page", page: 1 },
+      { title: "Front Cover", page: 1 },
       { title: "Title Page", page: 2 },
       { title: "For Shagun", page: 3 },
       { title: "Prologue", page: 4 },
@@ -1162,26 +1159,21 @@
       { title: "6. The Intimacy", page: 23 },
       { title: "7. The Efforts", page: 27 },
       { title: "8. The Unexpected", page: 33 },
-      { title: "9. The Future", page: 41 }
+      { title: "9. The Future", page: 42 },
+      { title: "10. The Manifestation", page: 50 },
+      { title: "11. Our Memories", page: 52 },
+      { title: "Happy Birthday Shagun", page: 64 },
+      { title: "Back Cover — The End", page: 65, isBackCover: true }
     ];
 
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
     let pageFlip = null;
-    let totalPages = 0;
+    let totalPdfPages = 0;
+    let totalDomPages = 0;
+    let hasInsertedInsideCover = false;
     let currentZoom = 1;
-
-    const tocList = document.getElementById("toc-list");
-    CHAPTERS.forEach(ch => {
-      const li = document.createElement("li");
-      li.innerHTML = `<span>${ch.title}</span><span class="pg">p. ${ch.page}</span>`;
-      li.onclick = () => {
-        if (pageFlip) pageFlip.flip(ch.page - 1);
-        toggleToc();
-      };
-      tocList.appendChild(li);
-    });
 
     function toggleToc() {
       document.getElementById("toc-drawer").classList.toggle("open");
@@ -1200,10 +1192,67 @@
       }
     }
 
+    function createInsideBackCover(width, height) {
+      const pageDiv = document.createElement("div");
+      pageDiv.className = "page";
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+
+      // Match the dark starry aesthetic of the book so Page 64 pairs seamlessly
+      const grad = ctx.createLinearGradient(0, 0, 0, height);
+      grad.addColorStop(0, "#090a10");
+      grad.addColorStop(1, "#121324");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Subtle starlight dots
+      ctx.fillStyle = "rgba(255, 209, 220, 0.35)";
+      for (let i = 0; i < 60; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const r = Math.random() * 1.8;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Soft center emblem
+      ctx.fillStyle = "rgba(255, 209, 220, 0.45)";
+      ctx.font = `${Math.round(width * 0.032)}px Georgia, serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("✦  Destined Ones  ✦", width / 2, height / 2);
+
+      pageDiv.appendChild(canvas);
+      return pageDiv;
+    }
+
+    function buildTocList() {
+      const tocList = document.getElementById("toc-list");
+      tocList.innerHTML = "";
+      CHAPTERS.forEach(ch => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span>${ch.title}</span><span class="pg">p. ${ch.page}</span>`;
+        li.onclick = () => {
+          if (pageFlip) {
+            // If jumping to the Back Cover ("The End") and an inside cover was inserted, target the final DOM page
+            const targetIndex = (ch.isBackCover && hasInsertedInsideCover)
+              ? totalDomPages - 1
+              : ch.page - 1;
+            pageFlip.flip(targetIndex);
+          }
+          toggleToc();
+        };
+        tocList.appendChild(li);
+      });
+    }
+
     async function initBook() {
       try {
         const pdf = await pdfjsLib.getDocument(encodeURI(PDF_URL)).promise;
-        totalPages = pdf.numPages;
+        totalPdfPages = pdf.numPages;
 
         const firstPage = await pdf.getPage(1);
         const baseViewport = firstPage.getViewport({ scale: 1 });
@@ -1224,17 +1273,27 @@
 
         const flipbookEl = document.getElementById("flipbook");
 
-        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        // St.PageFlip requires an EVEN number of total pages when showCover: true
+        // so that the last page ("THE END ...") closes alone as the Back Cover.
+        hasInsertedInsideCover = (totalPdfPages % 2 !== 0);
+
+        for (let pageNum = 1; pageNum <= totalPdfPages; pageNum++) {
           document.getElementById("loader-text").textContent =
-            `Loading page ${pageNum} of ${totalPages}...`;
+            `Loading page ${pageNum} of ${totalPdfPages}...`;
 
           const page = await pdf.getPage(pageNum);
           const renderScale = 2;
           const viewport = page.getViewport({ scale: renderScale });
 
+          // Insert a starry Inside Back Cover right before the final "THE END..." page
+          if (hasInsertedInsideCover && pageNum === totalPdfPages) {
+            const insideCoverDiv = createInsideBackCover(viewport.width, viewport.height);
+            flipbookEl.appendChild(insideCoverDiv);
+          }
+
           const pageDiv = document.createElement("div");
           pageDiv.className = "page";
-          if (pageNum === 1 || pageNum === totalPages) {
+          if (pageNum === 1 || pageNum === totalPdfPages) {
             pageDiv.dataset.density = "hard";
           }
 
@@ -1247,6 +1306,10 @@
           pageDiv.appendChild(canvas);
           flipbookEl.appendChild(pageDiv);
         }
+
+        const allDomPages = document.querySelectorAll(".page");
+        totalDomPages = allDomPages.length;
+        buildTocList();
 
         pageFlip = new St.PageFlip(flipbookEl, {
           width: Math.max(200, Math.round(pageWidth)),
@@ -1262,11 +1325,23 @@
           maxShadowOpacity: 0.5
         });
 
-        pageFlip.loadFromHTML(document.querySelectorAll(".page"));
+        pageFlip.loadFromHTML(allDomPages);
+
+        document.getElementById("page-indicator").textContent =
+          `Front Cover (1 of ${totalPdfPages})`;
 
         pageFlip.on("flip", (e) => {
-          document.getElementById("page-indicator").textContent =
-            `Page ${e.data + 1} of ${totalPages}`;
+          const domIdx = e.data;
+          const indicator = document.getElementById("page-indicator");
+
+          if (domIdx === 0) {
+            indicator.textContent = `Front Cover (1 of ${totalPdfPages})`;
+          } else if (domIdx >= totalDomPages - 1) {
+            indicator.textContent = `Back Cover (${totalPdfPages} of ${totalPdfPages})`;
+          } else {
+            const displayPage = Math.min(totalPdfPages - 1, domIdx + 1);
+            indicator.textContent = `Page ${displayPage} of ${totalPdfPages}`;
+          }
         });
 
         document.addEventListener("keydown", (e) => {
